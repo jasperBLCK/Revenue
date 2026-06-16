@@ -1,0 +1,1064 @@
+openapi: 3.1.0
+info:
+  title: RevenuePilot AI API
+  version: 0.1.0
+  description: >
+    API для RevenuePilot AI — AI-CRM с приёмом лидов и общением через Telegram-бота.
+    Клиенты пишут боту, бот создаёт под каждого топик в форум-группе менеджеров,
+    менеджеры отвечают через бота, а AI анализирует переписку в реальном времени.
+
+    Аутентификация: менеджеры логинятся по email/паролю и получают JWT
+    (access + refresh). Защищённые эндпоинты требуют заголовок
+    `Authorization: Bearer <access_token>`.
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local
+  - url: https://api.revenuepilot.ai/v1
+    description: Production
+
+tags:
+  - name: Auth
+    description: Аутентификация и управление менеджерами
+  - name: Leads
+    description: Лиды/клиенты (приходят из Telegram)
+  - name: Messages
+    description: Переписка с клиентами (мост Telegram ↔ CRM)
+  - name: Topics
+    description: Топики Telegram-группы, привязанные к лидам
+  - name: AI
+    description: AI-анализ, генерация ответов, инсайты, ассистент
+  - name: Funnels
+    description: Воронки продаж
+  - name: Dashboard
+    description: Сводка по выручке и лидам
+  - name: Telegram
+    description: Webhook и служебные эндпоинты Telegram-бота
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ----------------------------------------------------------------- Auth
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация менеджера
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: Менеджер создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход менеджера
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновить access-токен по refresh-токену
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Новая пара токенов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход (инвалидация refresh-токена)
+      responses:
+        "204":
+          description: Выполнено
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий менеджер
+      responses:
+        "200":
+          description: Профиль менеджера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Manager"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ----------------------------------------------------------------- Leads
+  /leads:
+    get:
+      tags: [Leads]
+      summary: Список лидов
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/LeadStatus"
+        - name: bucket
+          in: query
+          description: AI-категория для Anti-Ghost панели
+          schema:
+            type: string
+            enum: [hot, at_risk, ghost, follow_up]
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [score_desc, score_asc, last_activity_desc, created_desc]
+            default: last_activity_desc
+      responses:
+        "200":
+          description: Страница лидов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeadPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Leads]
+      summary: Создать лид вручную (обычно лиды создаются ботом)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadCreate"
+      responses:
+        "201":
+          description: Лид создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /leads/{leadId}:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [Leads]
+      summary: Карточка лида
+      responses:
+        "200":
+          description: Лид
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Leads]
+      summary: Обновить лид (статус, этап воронки, заметки, теги)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeadUpdate"
+      responses:
+        "200":
+          description: Обновлённый лид
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Leads]
+      summary: Удалить лид
+      responses:
+        "204":
+          description: Удалено
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/assign:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    post:
+      tags: [Leads]
+      summary: Назначить лид менеджеру
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [manager_id]
+              properties:
+                manager_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Лид переназначен
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lead"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ----------------------------------------------------------------- Messages
+  /leads/{leadId}/messages:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [Messages]
+      summary: История переписки с клиентом
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Сообщения лида
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessagePage"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Messages]
+      summary: Отправить сообщение клиенту от имени бота
+      description: >
+        Менеджер отправляет сообщение клиенту. Сообщение уходит клиенту через
+        Telegram-бота и дублируется в топик группы. AI пересчитывает инсайты.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundMessage"
+      responses:
+        "201":
+          description: Сообщение отправлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  # ----------------------------------------------------------------- Topics
+  /leads/{leadId}/topic:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [Topics]
+      summary: Топик Telegram-группы, привязанный к лиду
+      responses:
+        "200":
+          description: Топик
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Topics]
+      summary: Создать/переоткрыть топик для лида
+      description: Обычно создаётся ботом автоматически, но можно форсировать вручную.
+      responses:
+        "201":
+          description: Топик создан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Topic"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ----------------------------------------------------------------- AI
+  /leads/{leadId}/ai/score:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [AI]
+      summary: AI-score лида (вероятность покупки, риск ухода, причины)
+      responses:
+        "200":
+          description: AI-оценка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiScore"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/ai/summary:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [AI]
+      summary: AI-саммари клиента (выжимка из переписки)
+      responses:
+        "200":
+          description: Саммари
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/ai/next-action:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    get:
+      tags: [AI]
+      summary: Рекомендуемое следующее действие
+      responses:
+        "200":
+          description: Next best action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiNextAction"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /leads/{leadId}/ai/generate-reply:
+    parameters:
+      - $ref: "#/components/parameters/LeadId"
+    post:
+      tags: [AI]
+      summary: Сгенерировать ответ клиенту
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateReplyRequest"
+      responses:
+        "200":
+          description: Сгенерированный текст (не отправлен, требует подтверждения)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedReply"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /ai/assistant:
+    post:
+      tags: [AI]
+      summary: AI-ассистент по базе ("кому написать сегодня?")
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssistantQuery"
+      responses:
+        "200":
+          description: Ответ ассистента + связанные лиды
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantResponse"
+
+  /ai/grow-revenue:
+    post:
+      tags: [AI]
+      summary: "Как увеличить продажи?" — план по всей CRM
+      description: >
+        Анализирует всю базу: забытые лиды, готовые купить, узкие места воронки,
+        кому написать в ближайшие сутки. Возвращает готовый план с цифрами выручки.
+      responses:
+        "200":
+          description: План роста выручки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrowRevenuePlan"
+
+  # ----------------------------------------------------------------- Funnels
+  /funnels:
+    get:
+      tags: [Funnels]
+      summary: Список воронок
+      responses:
+        "200":
+          description: Воронки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Funnel"
+    post:
+      tags: [Funnels]
+      summary: Создать воронку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FunnelCreate"
+      responses:
+        "201":
+          description: Воронка создана
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Funnel"
+
+  /funnels/generate:
+    post:
+      tags: [Funnels]
+      summary: AI строит воронку под тип бизнеса
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [business_description]
+              properties:
+                business_description:
+                  type: string
+                  example: "B2B SaaS"
+      responses:
+        "200":
+          description: Сгенерированная воронка + объяснение
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedFunnel"
+
+  /funnels/{funnelId}/analytics:
+    parameters:
+      - name: funnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Funnels]
+      summary: Конверсия по этапам + AI-инсайт по узким местам
+      responses:
+        "200":
+          description: Аналитика воронки
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FunnelAnalytics"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ----------------------------------------------------------------- Dashboard
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Сводка для главного экрана (горячие/рисковые/забытые лиды, выручка)
+      responses:
+        "200":
+          description: Сводка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  # ----------------------------------------------------------------- Telegram
+  /telegram/webhook:
+    post:
+      tags: [Telegram]
+      summary: Webhook от Telegram Bot API
+      description: >
+        Принимает апдейты от Telegram (сообщения клиентов, ответы менеджеров в
+        топиках, команды бота). На новое сообщение клиента создаёт лид и топик,
+        сохраняет сообщение и триггерит AI-анализ. Защищён secret-токеном
+        Telegram, а не JWT.
+      security: []
+      parameters:
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Telegram Update object (произвольная структура)
+              additionalProperties: true
+      responses:
+        "200":
+          description: Апдейт принят
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    LeadId:
+      name: leadId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Не найдено
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: Конфликт (например, email уже занят)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    ValidationError:
+      description: Ошибка валидации
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    # --------- Auth
+    RegisterRequest:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        token_type:
+          type: string
+          example: bearer
+        expires_in:
+          type: integer
+          description: Время жизни access-токена в секундах
+        manager:
+          $ref: "#/components/schemas/Manager"
+
+    Manager:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [manager, admin]
+          default: manager
+        created_at:
+          type: string
+          format: date-time
+
+    # --------- Leads
+    LeadStatus:
+      type: string
+      enum: [new, contacted, qualified, proposal, negotiation, won, lost]
+
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        telegram_user_id:
+          type: integer
+          format: int64
+        telegram_username:
+          type: string
+          nullable: true
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        funnel_stage:
+          type: string
+          nullable: true
+        assigned_manager_id:
+          type: string
+          format: uuid
+          nullable: true
+        topic_id:
+          type: string
+          format: uuid
+          nullable: true
+        ai_score:
+          $ref: "#/components/schemas/AiScore"
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+          nullable: true
+        last_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    LeadCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        telegram_user_id:
+          type: integer
+          format: int64
+        telegram_username:
+          type: string
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+
+    LeadUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          $ref: "#/components/schemas/LeadStatus"
+        funnel_stage:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+
+    LeadPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    # --------- Messages
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lead_id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [inbound, outbound]
+          description: inbound = клиент→бот, outbound = менеджер→бот→клиент
+        text:
+          type: string
+        sender_manager_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Кто отправил (для outbound)
+        telegram_message_id:
+          type: integer
+          format: int64
+          nullable: true
+        is_ai_generated:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+
+    OutboundMessage:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+        is_ai_generated:
+          type: boolean
+          default: false
+
+    MessagePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total:
+          type: integer
+
+    # --------- Topics
+    Topic:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lead_id:
+          type: string
+          format: uuid
+        telegram_chat_id:
+          type: integer
+          format: int64
+          description: ID форум-группы менеджеров
+        message_thread_id:
+          type: integer
+          description: ID топика (forum topic) в группе
+        title:
+          type: string
+        is_open:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    # --------- AI
+    AiScore:
+      type: object
+      properties:
+        purchase_probability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        churn_risk:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        interest_level:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        reasons:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: string
+          format: date-time
+
+    AiSummary:
+      type: object
+      properties:
+        lead_id:
+          type: string
+          format: uuid
+        bullets:
+          type: array
+          items:
+            type: string
+        sentiment:
+          type: string
+          enum: [positive, neutral, negative]
+        updated_at:
+          type: string
+          format: date-time
+
+    AiNextAction:
+      type: object
+      properties:
+        action:
+          type: string
+          example: "Отправить демо на 15 минут в Telegram"
+        reason:
+          type: string
+        priority:
+          type: string
+          enum: [low, medium, high]
+
+    GenerateReplyRequest:
+      type: object
+      properties:
+        tone:
+          type: string
+          enum: [friendly, confident, short, discount_focused, value_focused]
+          default: friendly
+        instruction:
+          type: string
+          description: Доп. указание менеджера для генерации
+
+    GeneratedReply:
+      type: object
+      properties:
+        text:
+          type: string
+        tone:
+          type: string
+
+    AssistantQuery:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          example: "Кому нужно написать сегодня?"
+
+    AssistantResponse:
+      type: object
+      properties:
+        answer:
+          type: string
+        related_leads:
+          type: array
+          items:
+            $ref: "#/components/schemas/Lead"
+
+    GrowRevenuePlan:
+      type: object
+      properties:
+        potential_revenue:
+          type: number
+          description: Оценка упущенной/потенциальной выручки
+        currency:
+          type: string
+          default: USD
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              detail:
+                type: string
+              lead_ids:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+
+    # --------- Funnels
+    FunnelStage:
+      type: object
+      properties:
+        name:
+          type: string
+        order:
+          type: integer
+
+    Funnel:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        business_type:
+          type: string
+          nullable: true
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStage"
+        created_at:
+          type: string
+          format: date-time
+
+    FunnelCreate:
+      type: object
+      required: [name, stages]
+      properties:
+        name:
+          type: string
+        business_type:
+          type: string
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStage"
+
+    GeneratedFunnel:
+      type: object
+      properties:
+        stages:
+          type: array
+          items:
+            $ref: "#/components/schemas/FunnelStage"
+        explanation:
+          type: string
+
+    FunnelAnalytics:
+      type: object
+      properties:
+        funnel_id:
+          type: string
+          format: uuid
+        stages:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              count:
+                type: integer
+              conversion_rate:
+                type: number
+                format: float
+        ai_insight:
+          type: string
+
+    # --------- Dashboard
+    DashboardSummary:
+      type: object
+      properties:
+        hot_count:
+          type: integer
+        at_risk_count:
+          type: integer
+        ghost_count:
+          type: integer
+        follow_up_24h_count:
+          type: integer
+        potential_revenue:
+          type: number
+        currency:
+          type: string
+          default: USD
+        revenue_insight:
+          type: string
+
+    # --------- Common
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true

@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: revenuepilot-db
+    environment:
+      POSTGRES_USER: revenuepilot
+      POSTGRES_PASSWORD: revenuepilot
+      POSTGRES_DB: revenuepilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U revenuepilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: revenuepilot-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://revenuepilot:revenuepilot@db:5432/revenuepilot
+      DEBUG: "false"
+      # Seed demo data on first boot (login demo@revenuepilot.ai / demo12345).
+      SEED_ON_STARTUP: "true"
+      # Optional: provide to enable LLM-backed AI (heuristic fallback otherwise).
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      # Optional: provide to enable the live Telegram bot.
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN:-}"
+      TELEGRAM_GROUP_CHAT_ID: "${TELEGRAM_GROUP_CHAT_ID:-}"
+      TELEGRAM_WEBHOOK_SECRET: "${TELEGRAM_WEBHOOK_SECRET:-}"
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:

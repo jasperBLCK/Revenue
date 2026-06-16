@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+
+# build output
+dist/
+frontend/dist/
+
+# local tooling / editor
+.claude/
+.mcp.json
+frontend/.mcp.json
+.playwright-mcp/
+frontend/.playwright-mcp/
+
+# logs & env
+*.log
+.env
+.env.*
+.DS_Store

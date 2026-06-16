@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RevenuePilot AI Colors</title>
+  <style>
+    :root {
+      --brand-red: #E11D2E;
+      --brand-red-hover: #C91525;
+      --brand-red-soft: #FDECEE;
+      --brand-red-border: #F5B8C0;
+
+      --black: #050505;
+      --white: #FFFFFF;
+
+      --gray-950: #0A0A0B;
+      --gray-900: #141416;
+      --gray-800: #222226;
+      --gray-700: #34343A;
+      --gray-600: #52525A;
+      --gray-500: #74747D;
+      --gray-400: #A1A1AA;
+      --gray-300: #D4D4DA;
+      --gray-200: #E7E7EB;
+      --gray-100: #F4F4F6;
+      --gray-50: #FAFAFB;
+
+      --hot: #E11D2E;
+      --hot-bg: #FDECEE;
+      --success: #15803D;
+      --success-bg: #ECFDF3;
+      --warning: #B7791F;
+      --warning-bg: #FFF7E6;
+      --info: #2563EB;
+      --info-bg: #EEF4FF;
+      --ghost: #71717A;
+      --ghost-bg: #F4F4F6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #F4F4F6;
+      color: #111113;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 48px 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 34px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      max-width: 540px;
+      margin-top: 10px;
+      color: #67676F;
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .brand-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid #E7E7EB;
+      border-radius: 8px;
+      background: #FFFFFF;
+      color: #34343A;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--brand-red);
+    }
+
+    .section {
+      margin-top: 28px;
+    }
+
+    .section h2 {
+      margin-bottom: 14px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .swatch {
+      overflow: hidden;
+      border: 1px solid #E7E7EB;
+      border-radius: 8px;
+      background: #FFFFFF;
+    }
+
+    .color {
+      height: 96px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .meta {
+      padding: 12px;
+    }
+
+    .name {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hex {
+      margin-top: 4px;
+      color: #67676F;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .themes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .theme {
+      min-height: 260px;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #E7E7EB;
+    }
+
+    .theme.light {
+      background: #FFFFFF;
+      color: #111113;
+    }
+
+    .theme.dark {
+      background: #050505;
+      color: #F7F7F8;
+      border-color: #29292F;
+    }
+
+    .theme-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .theme h3 {
+      font-size: 16px;
+    }
+
+    .theme p {
+      margin-top: 6px;
+      color: #67676F;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .dark p {
+      color: #B6B6BE;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 8px;
+      background: #E11D2E;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .dark .button {
+      background: #FF3347;
+      color: #FFFFFF;
+    }
+
+    .mini-panel {
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #E7E7EB;
+      background: #FAFAFB;
+    }
+
+    .dark .mini-panel {
+      border-color: #29292F;
+      background: #111113;
+    }
+
+    .lead-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      min-height: 38px;
+      padding: 0 10px;
+      border-radius: 6px;
+      background: #FFFFFF;
+      font-size: 13px;
+    }
+
+    .dark .lead-row {
+      background: #19191D;
+    }
+
+    .score {
+      color: #E11D2E;
+      font-weight: 800;
+    }
+
+    .dark .score {
+      color: #FF3347;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+    }
+
+    .status {
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #E7E7EB;
+      background: #FFFFFF;
+    }
+
+    .status-label {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .status p {
+      margin-top: 12px;
+      color: #67676F;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .hot .status-label {
+      background: var(--hot-bg);
+      color: var(--hot);
+    }
+
+    .success .status-label {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .warning .status-label {
+      background: var(--warning-bg);
+      color: var(--warning);
+    }
+
+    .info .status-label {
+      background: var(--info-bg);
+      color: var(--info);
+    }
+
+    .ghost .status-label {
+      background: var(--ghost-bg);
+      color: var(--ghost);
+    }
+
+    @media (max-width: 720px) {
+      header,
+      .themes {
+        grid-template-columns: 1fr;
+      }
+
+      header {
+        display: grid;
+        align-items: start;
+      }
+
+      h1 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>RevenuePilot AI Colors</h1>
+        <p class="subtitle">Black and white product base with a sharp red revenue signal. Simple preview for the CRM interface palette.</p>
+      </div>
+      <div class="brand-chip">
+        <span class="brand-dot"></span>
+        Brand red: #E11D2E
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Brand Colors</h2>
+      <div class="grid">
+        <div class="swatch">
+          <div class="color" style="background:#E11D2E"></div>
+          <div class="meta">
+            <div class="name">Brand Red</div>
+            <div class="hex">#E11D2E</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="color" style="background:#C91525"></div>
+          <div class="meta">
+            <div class="name">Red Hover</div>
+            <div class="hex">#C91525</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="color" style="background:#FDECEE"></div>
+          <div class="meta">
+            <div class="name">Soft Red</div>
+            <div class="hex">#FDECEE</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="color" style="background:#050505"></div>
+          <div class="meta">
+            <div class="name">Black</div>
+            <div class="hex">#050505</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="color" style="background:#FFFFFF"></div>
+          <div class="meta">
+            <div class="name">White</div>
+            <div class="hex">#FFFFFF</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Neutral Scale</h2>
+      <div class="grid">
+        <div class="swatch"><div class="color" style="background:#0A0A0B"></div><div class="meta"><div class="name">Gray 950</div><div class="hex">#0A0A0B</div></div></div>
+        <div class="swatch"><div class="color" style="background:#141416"></div><div class="meta"><div class="name">Gray 900</div><div class="hex">#141416</div></div></div>
+        <div class="swatch"><div class="color" style="background:#222226"></div><div class="meta"><div class="name">Gray 800</div><div class="hex">#222226</div></div></div>
+        <div class="swatch"><div class="color" style="background:#52525A"></div><div class="meta"><div class="name">Gray 600</div><div class="hex">#52525A</div></div></div>
+        <div class="swatch"><div class="color" style="background:#A1A1AA"></div><div class="meta"><div class="name">Gray 400</div><div class="hex">#A1A1AA</div></div></div>
+        <div class="swatch"><div class="color" style="background:#E7E7EB"></div><div class="meta"><div class="name">Gray 200</div><div class="hex">#E7E7EB</div></div></div>
+        <div class="swatch"><div class="color" style="background:#F4F4F6"></div><div class="meta"><div class="name">Gray 100</div><div class="hex">#F4F4F6</div></div></div>
+        <div class="swatch"><div class="color" style="background:#FAFAFB"></div><div class="meta"><div class="name">Gray 50</div><div class="hex">#FAFAFB</div></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Theme Preview</h2>
+      <div class="themes">
+        <div class="theme light">
+          <div class="theme-top">
+            <div>
+              <h3>Light Theme</h3>
+              <p>Best for dashboards, tables, and clear demo screens.</p>
+            </div>
+            <button class="button">Increase sales</button>
+          </div>
+          <div class="mini-panel">
+            <div class="lead-row">
+              <span>OOO Alpha</span>
+              <span class="score">92%</span>
+            </div>
+            <div class="lead-row">
+              <span>TechLabs</span>
+              <span class="score">84%</span>
+            </div>
+            <div class="lead-row">
+              <span>Ivan Petrov</span>
+              <span class="score">78%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="theme dark">
+          <div class="theme-top">
+            <div>
+              <h3>Dark Theme</h3>
+              <p>Good for a premium hackathon demo and AI assistant screens.</p>
+            </div>
+            <button class="button">Generate reply</button>
+          </div>
+          <div class="mini-panel">
+            <div class="lead-row">
+              <span>OOO Alpha</span>
+              <span class="score">92%</span>
+            </div>
+            <div class="lead-row">
+              <span>TechLabs</span>
+              <span class="score">84%</span>
+            </div>
+            <div class="lead-row">
+              <span>Ivan Petrov</span>
+              <span class="score">78%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Status Colors</h2>
+      <div class="status-grid">
+        <div class="status hot">
+          <div class="status-label">Hot Lead</div>
+          <p>Ready to buy, high priority, strong revenue signal.</p>
+        </div>
+        <div class="status success">
+          <div class="status-label">Success</div>
+          <p>Won deals, positive movement, strong client fit.</p>
+        </div>
+        <div class="status warning">
+          <div class="status-label">Follow Up</div>
+          <p>Needs action soon, but not severe enough for red.</p>
+        </div>
+        <div class="status info">
+          <div class="status-label">AI Insight</div>
+          <p>Neutral AI recommendation, explanation, or analysis.</p>
+        </div>
+        <div class="status ghost">
+          <div class="status-label">Ghost</div>
+          <p>No reply, inactive lead, or low confidence opportunity.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
