@@ -6,9 +6,10 @@ Idempotent: clears existing demo data first (by the demo manager email).
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.core.database import AsyncSessionLocal
 from app.core.security import hash_password
@@ -243,6 +244,16 @@ LEADS = [
 
 async def seed() -> None:
     async with AsyncSessionLocal() as db:
+        # Safety: never wipe a database that already holds data. In production
+        # the API container reseeds on every restart, so without this guard a
+        # redeploy would destroy real leads/topics captured from Telegram.
+        # Seeding only populates an empty database (override with SEED_FORCE=true).
+        existing_leads = await db.scalar(select(func.count()).select_from(Lead))
+        force = os.environ.get("SEED_FORCE", "false").lower() == "true"
+        if existing_leads and not force:
+            print(f"Seed skipped: database already has {existing_leads} leads.")
+            return
+
         # Reset demo data. Leads keep their manager FK as SET NULL, so they
         # must be cleared explicitly (messages and topics cascade from leads).
         await db.execute(delete(Lead))

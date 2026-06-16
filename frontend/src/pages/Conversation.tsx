@@ -40,7 +40,17 @@ export function Conversation({
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Poll so client replies (incl. those answered from a Telegram topic) appear live.
+    const poll = window.setInterval(() => {
+      client
+        .messages(lead.id)
+        .then((page) => setMessages((prev) => (page.items.length !== prev.length ? page.items : prev)))
+        .catch(() => {});
+    }, 4000);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.clearInterval(poll);
+    };
   }, [lead.id]);
 
   useEffect(() => {

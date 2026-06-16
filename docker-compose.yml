@@ -1,0 +1,52 @@
+# RevenuePilot AI — full stack (Postgres + FastAPI backend + Vite frontend).
+#   docker compose up --build
+#   frontend: http://localhost:5173   ·   API: http://localhost:8000/api/v1/docs
+#   demo login: demo@revenuepilot.ai / demo12345
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: revenuepilot-db
+    environment:
+      POSTGRES_USER: revenuepilot
+      POSTGRES_PASSWORD: revenuepilot
+      POSTGRES_DB: revenuepilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U revenuepilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: revenuepilot-api
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      # Inside the compose network the DB host is the service name `db`.
+      DATABASE_URL: postgresql+asyncpg://revenuepilot:revenuepilot@db:5432/revenuepilot
+      DEBUG: "false"
+      # Seed demo data on first boot (login demo@revenuepilot.ai / demo12345).
+      SEED_ON_STARTUP: "true"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: revenuepilot-frontend
+    depends_on:
+      - api
+    environment:
+      # Browser runs on the host, so it reaches the API via the published port.
+      VITE_API_BASE: http://localhost:8000/api/v1
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:

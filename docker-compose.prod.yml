@@ -1,0 +1,72 @@
+# RevenuePilot AI — production stack (Caddy TLS + FastAPI + Vite/nginx + Postgres).
+# Deployed to the server by deploy.sh. Public entrypoint: https://revenue.makhkets.ru
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: revenuepilot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: revenuepilot
+      POSTGRES_PASSWORD: revenuepilot
+      POSTGRES_DB: revenuepilot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U revenuepilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: revenuepilot-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      # Overrides take precedence over env_file.
+      DATABASE_URL: postgresql+asyncpg://revenuepilot:revenuepilot@db:5432/revenuepilot
+      ENVIRONMENT: production
+      DEBUG: "false"
+      # Seed only populates an empty DB and never wipes real data (see app/seed.py).
+      # Kept on so a fresh volume still gets demo data on first boot.
+      SEED_ON_STARTUP: "true"
+      CORS_ORIGINS: '["https://revenue.makhkets.ru"]'
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_BASE: https://revenue.makhkets.ru/api/v1
+    container_name: revenuepilot-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "80"
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: revenuepilot-caddy
+    restart: unless-stopped
+    depends_on:
+      - api
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

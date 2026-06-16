@@ -9,7 +9,8 @@ WORKDIR /app
 
 # Copy the project and install it (+ dependencies).
 COPY . .
-RUN pip install --upgrade pip && pip install -e .
+RUN pip install --upgrade pip && pip install -e . \
+    && chmod +x docker-entrypoint.sh
 
 EXPOSE 8000
 

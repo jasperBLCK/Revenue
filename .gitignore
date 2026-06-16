@@ -17,4 +17,5 @@ frontend/.playwright-mcp/
 *.log
 .env
 .env.*
+deploy/server.env
 .DS_Store

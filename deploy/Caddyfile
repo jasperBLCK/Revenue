@@ -1,0 +1,16 @@
+# Caddy reverse proxy for RevenuePilot AI.
+# Auto-provisions a Let's Encrypt certificate for the domain.
+revenue.makhkets.ru {
+	encode gzip zstd
+
+	# Backend API + health + Telegram webhook + WebSocket (/api/v1/ws).
+	@backend path /api/* /health
+	handle @backend {
+		reverse_proxy api:8000
+	}
+
+	# Everything else -> static frontend (nginx).
+	handle {
+		reverse_proxy frontend:80
+	}
+}

@@ -51,6 +51,7 @@ import {
   type LeadState,
 } from "./lib/leads";
 import { LeadsTable } from "./pages/LeadsTable";
+import { Dialogs } from "./pages/Dialogs";
 import { PipelineBoard } from "./pages/PipelineBoard";
 import { Analytics } from "./pages/Analytics";
 import { Settings } from "./pages/Settings";
@@ -69,6 +70,7 @@ type View =
   | "command"
   | "boost"
   | "leads"
+  | "dialogs"
   | "pipeline"
   | "hot"
   | "risk"
@@ -83,6 +85,7 @@ const navMeta = [
   { id: "command", label: "Командный центр", icon: LayoutDashboard },
   { id: "boost", label: "Рост выручки", icon: Sparkles },
   { id: "leads", label: "Все лиды", icon: Users },
+  { id: "dialogs", label: "Диалоги", icon: MessagesSquare },
   { id: "pipeline", label: "Сделки", icon: KanbanSquare },
   { id: "hot", label: "Готовы купить", icon: Flame },
   { id: "risk", label: "Могут уйти", icon: TriangleAlert },
@@ -240,6 +243,18 @@ function Workspace() {
 
   const leads = useMemo(() => apiLeads.map(mapLead), [apiLeads]);
 
+  const dialogs = useMemo(
+    () =>
+      leads
+        .filter((lead) => lead.hasTopic)
+        .sort(
+          (a, b) =>
+            new Date(b.lastActivityAt ?? 0).getTime() -
+            new Date(a.lastActivityAt ?? 0).getTime(),
+        ),
+    [leads],
+  );
+
   const selectedLead =
     leads.find((lead) => lead.id === selectedLeadId) ?? leads[0] ?? null;
 
@@ -254,6 +269,7 @@ function Workspace() {
     command: "",
     boost: "",
     leads: leads.length ? String(leads.length) : "",
+    dialogs: dialogs.length ? String(dialogs.length) : "",
     pipeline: "",
     hot: dashboard ? String(dashboard.hot_count) : "",
     risk: dashboard ? String(dashboard.at_risk_count) : "",
@@ -319,6 +335,8 @@ function Workspace() {
                 onOpenLead={openLead}
                 onOpenConversation={openConversation}
               />
+            ) : activeView === "dialogs" ? (
+              <Dialogs leads={dialogs} onOpenConversation={openConversation} />
             ) : activeView === "pipeline" ? (
               <PipelineBoard
                 leads={leads}
@@ -413,23 +431,29 @@ function SignalRail({
   onLogout: () => void;
 }) {
   return (
-    <aside className="signal-rail">
-      <div className="rail-head">
-        <span className="rail-logo">
+    <aside className={cn("signal-rail", collapsed && "collapsed")}>
+      <div className="rail-brand">
+        <span className="mark">
           <CircleDollarSign size={20} />
         </span>
         {!collapsed && (
-          <div className="rail-title">
+          <div className="brand-copy">
             <strong>RevenuePilot</strong>
             <span>AI Revenue Assistant</span>
           </div>
         )}
-        <button className="rail-toggle" type="button" onClick={onToggle} title="Свернуть меню">
+        <button
+          className="collapse-button"
+          type="button"
+          onClick={onToggle}
+          title={collapsed ? "Развернуть меню" : "Свернуть меню"}
+          aria-label={collapsed ? "Развернуть меню" : "Свернуть меню"}
+        >
           <Menu size={18} />
         </button>
       </div>
 
-      <nav className="signal-nav">
+      <nav className="rail-signals">
         {navMeta.map((item) => {
           const Icon = item.icon;
           const isActive = item.id === activeView;

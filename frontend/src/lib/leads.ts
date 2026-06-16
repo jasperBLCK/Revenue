@@ -14,9 +14,11 @@ export type Lead = {
   status: ApiLead["status"];
   stage: string;
   lastReply: string;
+  lastActivityAt: string | null;
   channel: string;
   reasons: string[];
   username: string | null;
+  hasTopic: boolean;
 };
 
 export const STATUS_LABEL: Record<string, string> = {
@@ -80,9 +82,11 @@ export function mapLead(api: ApiLead): Lead {
     status: api.status,
     stage: api.funnel_stage ?? STATUS_LABEL[api.status] ?? api.status,
     lastReply: relativeTime(api.last_activity_at),
+    lastActivityAt: api.last_activity_at,
     channel: api.telegram_username ? "Telegram" : "Web",
     reasons: api.ai_score.reasons,
     username: api.telegram_username,
+    hasTopic: api.topic_id != null,
   };
 }
 

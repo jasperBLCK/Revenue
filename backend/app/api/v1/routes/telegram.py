@@ -43,9 +43,15 @@ async def telegram_webhook(
     text = message.get("text", "")
     chat = message.get("chat", {})
     from_user = message.get("from", {})
+    chat_type = chat.get("type")
 
-    # Only handle direct messages from clients (private chats) here.
-    if chat.get("type") != "private":
+    # A manager typed inside a lead's forum topic -> relay it to the client as the bot.
+    if chat_type in ("group", "supergroup"):
+        await _handle_topic_reply(db, message, chat, from_user, text)
+        return {"ok": True}
+
+    # Only handle direct messages from clients (private chats) below.
+    if chat_type != "private":
         return {"ok": True}
 
     telegram_user_id = from_user.get("id")
@@ -133,3 +139,65 @@ async def telegram_webhook(
         }
     )
     return {"ok": True}
+
+
+async def _handle_topic_reply(
+    db: AsyncSession,
+    message: dict[str, Any],
+    chat: dict[str, Any],
+    from_user: dict[str, Any],
+    text: str,
+) -> None:
+    """Relay a manager's message from a lead's forum topic to the client via the bot.
+
+    Lets managers reply to any user straight from the Telegram topic — the bot
+    delivers their text to the client and the exchange is stored as an outbound
+    message so it also shows up in the web panel.
+    """
+    # Ignore the bot's own mirrored messages, commands, and service updates.
+    if from_user.get("is_bot"):
+        return
+    if not text or text.startswith("/"):
+        return
+    thread_id = message.get("message_thread_id")
+    if thread_id is None:
+        return
+    # Only react inside the configured managers' group.
+    if settings.telegram_group_chat_id and chat.get("id") != settings.telegram_group_chat_id:
+        return
+
+    result = await db.execute(
+        select(TopicModel)
+        .options(selectinload(TopicModel.lead).selectinload(LeadModel.topic))
+        .where(TopicModel.message_thread_id == thread_id)
+        .where(TopicModel.telegram_chat_id == chat.get("id"))
+    )
+    topic = result.scalar_one_or_none()
+    if topic is None or topic.lead is None or not topic.lead.telegram_user_id:
+        return
+    lead = topic.lead
+
+    telegram_message_id = await telegram_service.send_to_client(lead.telegram_user_id, text)
+    db.add(
+        MessageModel(
+            lead_id=lead.id,
+            direction=MessageDirection.outbound,
+            text=text,
+            telegram_message_id=telegram_message_id,
+        )
+    )
+    lead.last_activity_at = datetime.now(UTC)
+    await db.flush()
+    await refresh_lead_insights(db, lead)
+    await db.refresh(lead, attribute_names=["topic"])
+    schema = LeadSchema.from_model(lead)
+    await db.commit()
+    await events.broadcast(
+        {
+            "type": "lead.updated",
+            "source": "telegram",
+            "bucket": bucket_for_lead(lead),
+            "text": text,
+            "lead": jsonable_encoder(schema),
+        }
+    )
