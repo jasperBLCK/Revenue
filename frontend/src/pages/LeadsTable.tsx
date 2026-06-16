@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpDown, MessagesSquare, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowUpDown, Check, MessagesSquare, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import type { ApiClient } from "../api/client";
 import { cn } from "../lib/ui";
 import { initials, STATUS_LABEL, type Lead } from "../lib/leads";
 
@@ -23,15 +24,19 @@ export function LeadsTable({
   leads,
   onOpenLead,
   onOpenConversation,
+  client,
 }: {
   leads: Lead[];
   onOpenLead: (lead: Lead) => void;
   onOpenConversation: (lead: Lead) => void;
+  client?: ApiClient;
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState<SortKey>("score_desc");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -57,6 +62,35 @@ export function LeadsTable({
   const rows = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const resetPage = () => setPage(1);
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === rows.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map((r) => r.id)));
+    }
+  };
+
+  const handleBulkStatus = async (status: string) => {
+    if (!client || selectedIds.size === 0) return;
+    setBatchLoading(true);
+    try {
+      await client.batchUpdateStatus(Array.from(selectedIds), status);
+      setSelectedIds(new Set());
+    } finally {
+      setBatchLoading(false);
+    }
+  };
 
   return (
     <div className="leads-page">
@@ -100,8 +134,54 @@ export function LeadsTable({
         <span className="leads-total">{filtered.length} лидов</span>
       </section>
 
+      {selectedIds.size > 0 && (
+        <section className="panel" style={{ padding: "12px 16px", backgroundColor: "#f0f7ff" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ fontSize: "13px", fontWeight: "500" }}>
+              Выбрано: {selectedIds.size} лидов
+            </span>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => handleBulkStatus("won")}
+                disabled={batchLoading}
+              >
+                <Check size={14} />
+                Отметить как Won
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => handleBulkStatus("lost")}
+                disabled={batchLoading}
+              >
+                <Trash2 size={14} />
+                Отметить как Lost
+              </button>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Отменить
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="panel leads-table-wrap">
         <div className="leads-table-head">
+          {client && (
+            <input
+              type="checkbox"
+              checked={selectedIds.size === rows.length && rows.length > 0}
+              onChange={toggleSelectAll}
+              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+              title="Выбрать всех на странице"
+            />
+          )}
           <span>Клиент</span>
           <span>Статус</span>
           <span>AI score</span>
@@ -120,7 +200,18 @@ export function LeadsTable({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.16, delay: index * 0.02 }}
+            style={{ backgroundColor: selectedIds.has(lead.id) ? "#f0f7ff" : "transparent" }}
           >
+            {client && (
+              <div style={{ padding: "0 12px", display: "flex", alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(lead.id)}
+                  onChange={() => toggleSelect(lead.id)}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+              </div>
+            )}
             <div className="leads-cell client">
               <span className={cn("lead-avatar", lead.state)}>{initials(lead.name)}</span>
               <div>

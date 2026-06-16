@@ -334,6 +334,7 @@ function Workspace() {
                 leads={leads}
                 onOpenLead={openLead}
                 onOpenConversation={openConversation}
+                client={client}
               />
             ) : activeView === "dialogs" ? (
               <Dialogs leads={dialogs} onOpenConversation={openConversation} />
@@ -890,6 +891,8 @@ function LeadIntel({
   const [tone, setTone] = useState<ReplyTone>("friendly");
   const [generated, setGenerated] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -908,6 +911,14 @@ function LeadIntel({
         setPriority(next.priority);
       })
       .catch(() => undefined);
+
+    // Load templates
+    client.listTemplates()
+      .then((res) => {
+        if (!cancelled) setTemplates(res.templates);
+      })
+      .catch(() => undefined);
+
     return () => {
       cancelled = true;
     };
@@ -930,6 +941,11 @@ function LeadIntel({
     } finally {
       setGenerating(false);
     }
+  };
+
+  const applyTemplate = (template: any) => {
+    setGenerated(template.body.replace("{{name}}", lead.name).replace("{{company}}", lead.name));
+    setShowTemplates(false);
   };
 
   return (
@@ -1033,6 +1049,56 @@ function LeadIntel({
                   </button>
                 ))}
               </div>
+              {templates.length > 0 && (
+                <div style={{ position: "relative" }}>
+                  <button
+                    className="text-button"
+                    type="button"
+                    onClick={() => setShowTemplates(!showTemplates)}
+                    style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}
+                  >
+                    📝 Готовые шаблоны ({templates.length})
+                  </button>
+                  {showTemplates && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        backgroundColor: "#fff",
+                        border: "1px solid #ccc",
+                        borderRadius: "6px",
+                        padding: "8px 0",
+                        zIndex: 10,
+                        minWidth: "240px",
+                        marginTop: "4px",
+                      }}
+                    >
+                      {templates.map((tpl) => (
+                        <button
+                          key={tpl.name}
+                          type="button"
+                          onClick={() => applyTemplate(tpl)}
+                          style={{
+                            width: "100%",
+                            padding: "10px 12px",
+                            textAlign: "left",
+                            border: "none",
+                            backgroundColor: "transparent",
+                            cursor: "pointer",
+                            fontSize: "12px",
+                            borderBottom: "1px solid #f0f0f0",
+                          }}
+                          className="text-button"
+                        >
+                          <div style={{ fontWeight: "500" }}>{tpl.name}</div>
+                          <div style={{ color: "#999", fontSize: "11px" }}>{tpl.subject}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="intel-actions">
                 <button className="primary-button full" type="button" onClick={generate} disabled={generating}>
                   <MessageSquareText size={17} />

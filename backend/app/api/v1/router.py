@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.routes import (
     ai,
+    analytics,
     auth,
     dashboard,
     funnels,
@@ -20,5 +21,6 @@ api_router.include_router(topics.router)
 api_router.include_router(ai.router)
 api_router.include_router(funnels.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(analytics.router)
 api_router.include_router(telegram.router)
 api_router.include_router(realtime.router)

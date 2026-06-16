@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Lightbulb, TrendingDown, TrendingUp } from "lucide-react";
+import { Download, Lightbulb, Medal, TrendingDown, TrendingUp } from "lucide-react";
 import type { ApiClient } from "../api/client";
 import type { DashboardSummary, FunnelAnalytics } from "../api/types";
 import { cn } from "../lib/ui";
@@ -17,6 +17,8 @@ export function Analytics({
 }) {
   const [analytics, setAnalytics] = useState<FunnelAnalytics | null>(null);
   const [funnelName, setFunnelName] = useState<string>("");
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -27,10 +29,31 @@ export function Analytics({
       const data = await client.funnelAnalytics(funnels[0].id);
       if (!cancelled) setAnalytics(data);
     })().catch(() => undefined);
+
+    (async () => {
+      try {
+        const result = await client.leaderboard(30);
+        if (!cancelled) setLeaderboard(result.leaderboard);
+      } catch {
+        // ignore
+      }
+    })().catch(() => undefined);
+
     return () => {
       cancelled = true;
     };
   }, [client]);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await client.exportLeads("csv");
+    } catch {
+      // ignore
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const sumByState = (state: LeadState) =>
     leads.filter((lead) => lead.state === state).reduce((acc, lead) => acc + lead.valueNum, 0);
@@ -66,20 +89,32 @@ export function Analytics({
 
   return (
     <div className="analytics-page">
-      <section className="analytics-kpis">
-        {kpis.map((kpi) => (
-          <motion.div
-            key={kpi.label}
-            className={cn("kpi-card", kpi.tone)}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <kpi.icon size={18} />
-            <strong>{kpi.value}</strong>
-            <span>{kpi.label}</span>
-          </motion.div>
-        ))}
-      </section>
+      <div className="analytics-header">
+        <section className="analytics-kpis">
+          {kpis.map((kpi) => (
+            <motion.div
+              key={kpi.label}
+              className={cn("kpi-card", kpi.tone)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <kpi.icon size={18} />
+              <strong>{kpi.value}</strong>
+              <span>{kpi.label}</span>
+            </motion.div>
+          ))}
+        </section>
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={handleExport}
+          disabled={exporting}
+          title="Скачать CSV отчёт со всеми лидами"
+        >
+          <Download size={16} />
+          {exporting ? "Экспортирую…" : "Экспорт в CSV"}
+        </button>
+      </div>
 
       <div className="analytics-grid">
         <section className="panel">
@@ -137,6 +172,53 @@ export function Analytics({
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <h2 style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Medal size={20} />
+              Рейтинг менеджеров
+            </h2>
+            <span className="panel-sub">30 дней</span>
+          </div>
+          {leaderboard.length === 0 ? (
+            <p className="lead-empty">Загружаю рейтинг…</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {leaderboard.map((manager, idx) => (
+                <div
+                  key={manager.manager_id}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(0,0,0,0.02)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                    <span style={{ fontSize: "20px", fontWeight: "bold", minWidth: "40px" }}>
+                      {idx === 0 && "🥇"}
+                      {idx === 1 && "🥈"}
+                      {idx === 2 && "🥉"}
+                      {idx > 2 && `#${idx + 1}`}
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: "600" }}>{manager.name}</div>
+                      <div style={{ fontSize: "12px", color: "#666" }}>
+                        {manager.won_deals} закрыто · {manager.total_leads} лидов
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", fontWeight: "600", color: "#00a86b" }}>
+                    {Math.round(manager.conversion_rate)}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>

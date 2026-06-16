@@ -178,4 +178,81 @@ export class ApiClient {
       body: JSON.stringify({ business_description: businessDescription }),
     });
   }
+
+  // --- Analytics & Export ---
+  async exportLeads(format: "csv" = "csv"): Promise<void> {
+    const headers: Record<string, string> = {
+      ...(this.token && { Authorization: `Bearer ${this.token}` }),
+    };
+    const res = await fetch(`${API_BASE}/analytics/export?format=${format}`, { headers });
+    if (!res.ok) throw new ApiError(res.status, "Export failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `leads_export_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async leaderboard(periodDays: number = 30): Promise<{
+    period_days: number;
+    leaderboard: Array<{
+      manager_id: string;
+      name: string;
+      total_leads: number;
+      won_deals: number;
+      conversion_rate: number;
+    }>;
+  }> {
+    return this.request("/analytics/leaderboard", {
+      method: "GET",
+    });
+  }
+
+  async listTemplates(): Promise<{
+    templates: Array<{
+      name: string;
+      subject: string;
+      body: string;
+    }>;
+  }> {
+    return this.request("/analytics/templates");
+  }
+
+  async batchUpdateStatus(
+    leadIds: string[],
+    status: string,
+  ): Promise<{ updated: number }> {
+    return this.request("/analytics/batch/update-status", {
+      method: "POST",
+      body: JSON.stringify({ lead_ids: leadIds, status }),
+    });
+  }
+
+  async batchAssign(leadIds: string[], managerId: string): Promise<{ updated: number }> {
+    return this.request("/analytics/batch/assign", {
+      method: "POST",
+      body: JSON.stringify({ lead_ids: leadIds, manager_id: managerId }),
+    });
+  }
+
+  async createAutomation(payload: {
+    name: string;
+    trigger: string;
+    score_threshold?: number;
+    action: string;
+    action_value?: string;
+  }): Promise<any> {
+    return this.request("/analytics/automations", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async listAutomations(): Promise<{ automations: any[] }> {
+    return this.request("/analytics/automations");
+  }
 }
